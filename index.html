@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pro Music Player - Myanmar</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1db954, #191414);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            padding: 15px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+        }
+
+        .player-card {
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(20px);
+            padding: 25px;
+            border-radius: 30px;
+            width: 400px;
+            max-width: 100%;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .album-art {
+            width: 150px; height: 150px;
+            background: #111; margin: 0 auto 20px;
+            border-radius: 50%; display: flex;
+            justify-content: center; align-items: center;
+            font-size: 50px; border: 4px solid #1db954;
+            box-shadow: 0 0 20px rgba(29, 185, 84, 0.4);
+            animation: rotate 12s linear infinite;
+            animation-play-state: paused;
+        }
+
+        @keyframes rotate { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        .info h2 { font-size: 20px; margin: 10px 0; color: #1db954; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .info p { color: #b3b3b3; font-size: 13px; margin-bottom: 20px; }
+
+        .controls { display: flex; justify-content: space-around; align-items: center; margin-bottom: 20px; }
+        .btn { background: none; border: none; color: white; font-size: 22px; cursor: pointer; transition: 0.2s; }
+        .btn:hover { color: #1db954; transform: scale(1.1); }
+        .play-pause { font-size: 55px; color: #1db954; }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .upload-btn {
+            background: #222; color: #1db954; padding: 12px;
+            border-radius: 12px; cursor: pointer; 
+            font-weight: bold; font-size: 13px;
+            border: 1px solid #1db954;
+            transition: 0.3s;
+            display: inline-block;
+        }
+        .upload-btn:hover { background: #1db954; color: white; }
+
+        .playlist-header {
+            display: flex; justify-content: space-between;
+            font-size: 14px; margin-top: 10px; padding: 8px;
+            border-bottom: 1px solid #333;
+            font-weight: bold;
+        }
+
+        .playlist-container {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            text-align: left;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+        }
+        
+        .playlist-item {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: 0.2s;
+        }
+        .playlist-item:hover { background: rgba(255, 255, 255, 0.1); }
+        .playlist-item.active { background: rgba(29, 185, 84, 0.2); color: #1db954; font-weight: bold; }
+        .song-name { font-size: 13px; cursor: pointer; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .del-btn { color: #ff4d4d; padding-left: 15px; cursor: pointer; font-size: 14px; }
+        
+        /* Scrollbar styling */
+        .playlist-container::-webkit-scrollbar { width: 5px; }
+        .playlist-container::-webkit-scrollbar-thumb { background: #1db954; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<div class="player-card">
+    <div class="album-art" id="disk">🎵</div>
+    
+    <div class="info">
+        <h2 id="songTitle">တေးသီချင်း ရွေးချယ်ပါ</h2>
+        <p id="artistName">ဖိုင်များကို တစ်ခုချင်းစီ (သို့) အများကြီး ရွေးနိုင်သည်</p>
+    </div>
+
+    <div class="controls">
+        <button class="btn" id="btnShuffle" title="Shuffle"><i class="fas fa-random"></i></button>
+        <button class="btn" id="btnPrev"><i class="fas fa-step-backward"></i></button>
+        <button class="btn play-pause" id="btnPlay"><i class="fas fa-play-circle"></i></button>
+        <button class="btn" id="btnNext"><i class="fas fa-step-forward"></i></button>
+        <button class="btn" id="btnRepeat" title="Repeat"><i class="fas fa-redo"></i></button>
+    </div>
+
+    <div class="upload-section">
+        <label class="upload-btn">
+            FILES ရွေးရန် 📂
+            <input type="file" id="fileInput" accept="audio/*" multiple style="display: none;">
+        </label>
+        <label class="upload-btn">
+            FOLDER ရွေးရန် 📁
+            <input type="file" id="folderInput" webkitdirectory mozdirectory style="display: none;">
+        </label>
+    </div>
+
+    <div class="playlist-header">
+        <span>သီချင်းစာရင်း</span>
+        <span id="trackCount">0 Songs</span>
+    </div>
+
+    <div class="playlist-container" id="playlistDisplay">
+        </div>
+
+    <audio id="audioPlayer"></audio>
+</div>
+
+<script>
+    const audioPlayer = document.getElementById('audioPlayer');
+    const songTitle = document.getElementById('songTitle');
+    const disk = document.getElementById('disk');
+    const playlistDisplay = document.getElementById('playlistDisplay');
+    const trackCountDisplay = document.getElementById('trackCount');
+    const btnPlay = document.getElementById('btnPlay');
+
+    let playlist = [];
+    let currentIndex = 0;
+    let isShuffle = false;
+    let repeatMode = 0; // 0: No Repeat, 1: Repeat List, 2: Repeat One
+
+    // File များကို လက်ခံပြီး Playlist ထဲ ထည့်ပေးသည့် Function
+    function handleFiles(files) {
+        const audioFiles = Array.from(files).filter(file => 
+            file.type.startsWith('audio/') || 
+            /\.(mp3|wav|flac|m4a|ogg|aac)$/i.test(file.name)
+        );
+        
+        if (audioFiles.length === 0) {
+            alert("အသံဖိုင်များ မတွေ့ပါ!");
+            return;
+        }
+
+        // ရှိပြီးသား Playlist ထဲကို အသစ်များကို Append (ပေါင်းထည့်) လုပ်ခြင်း
+        audioFiles.forEach(file => {
+            const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
+            
+            // Duplicate (တူနေတာ) စစ်ဆေးခြင်း
+            const exists = playlist.some(song => song.name === nameWithoutExt);
+            
+            if (!exists) {
+                playlist.push({
+                    name: nameWithoutExt,
+                    url: URL.createObjectURL(file)
+                });
+            }
+        });
+
+        // ပထမဆုံးအကြိမ် ဖိုင်ထည့်ခြင်းဖြစ်လျှင် သီချင်း စတင် Load လုပ်မည်
+        if (playlist.length > 0 && !audioPlayer.getAttribute('src')) {
+            loadSong(0);
+        }
+
+        renderPlaylist();
+        
+        // Input Value ကို Reset လုပ်မှ တစ်ခါဖျက်ပြီးသားဖိုင်ကို ပြန်ရွေးရင် အလုပ်လုပ်မှာဖြစ်သည်
+        document.getElementById('fileInput').value = "";
+        document.getElementById('folderInput').value = "";
+    }
+
+    document.getElementById('fileInput').addEventListener('change', (e) => handleFiles(e.target.files));
+    document.getElementById('folderInput').addEventListener('change', (e) => handleFiles(e.target.files));
+
+    function renderPlaylist() {
+        playlistDisplay.innerHTML = "";
+        trackCountDisplay.innerText = `${playlist.length} Songs`;
+        
+        playlist.forEach((song, index) => {
+            const item = document.createElement('div');
+            item.className = `playlist-item ${index === currentIndex ? 'active' : ''}`;
+            item.innerHTML = `
+                <div class="song-name" onclick="playSongAt(${index})">${index + 1}. ${song.name}</div>
+                <div class="del-btn" onclick="removeSong(${index})"><i class="fas fa-trash-alt"></i></div>
+            `;
+            playlistDisplay.appendChild(item);
+        });
+    }
+
+    function loadSong(index) {
+        if (playlist.length === 0) {
+            songTitle.innerText = "တေးသီချင်း ရွေးချယ်ပါ";
+            audioPlayer.removeAttribute('src');
+            return;
+        }
+        currentIndex = index;
+        audioPlayer.src = playlist[index].url;
+        songTitle.innerText = playlist[index].name;
+        renderPlaylist();
+    }
+
+    function playSongAt(index) {
+        loadSong(index);
+        playMusic();
+    }
+
+    function removeSong(index) {
+        // သီချင်းဖျက်ရင် URL Object ကို Memory ရှင်းထုတ်ခြင်း
+        URL.revokeObjectURL(playlist[index].url);
+        playlist.splice(index, 1);
+        
+        if (playlist.length === 0) {
+            pauseMusic();
+            loadSong(0);
+        } else if (index === currentIndex) {
+            loadSong(currentIndex % playlist.length);
+            playMusic();
+        } else if (index < currentIndex) {
+            currentIndex--;
+        }
+        renderPlaylist();
+    }
+
+    function playMusic() {
+        if (!audioPlayer.src) return;
+        audioPlayer.play();
+        btnPlay.innerHTML = '<i class="fas fa-pause-circle"></i>';
+        disk.style.animationPlayState = 'running';
+    }
+
+    function pauseMusic() {
+        audioPlayer.pause();
+        btnPlay.innerHTML = '<i class="fas fa-play-circle"></i>';
+        disk.style.animationPlayState = 'paused';
+    }
+
+    btnPlay.onclick = () => {
+        if (!audioPlayer.src && playlist.length > 0) {
+            loadSong(0);
+            playMusic();
+        } else if (audioPlayer.paused) {
+            playMusic();
+        } else {
+            pauseMusic();
+        }
+    };
+
+    document.getElementById('btnNext').onclick = () => {
+        if (playlist.length === 0) return;
+        if (isShuffle) {
+            currentIndex = Math.floor(Math.random() * playlist.length);
+        } else {
+            currentIndex = (currentIndex + 1) % playlist.length;
+        }
+        loadSong(currentIndex);
+        playMusic();
+    };
+
+    document.getElementById('btnPrev').onclick = () => {
+        if (playlist.length === 0) return;
+        currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+        loadSong(currentIndex);
+        playMusic();
+    };
+
+    document.getElementById('btnRepeat').onclick = function() {
+        repeatMode = (repeatMode + 1) % 3;
+        // Icon အရောင်ပြောင်းလဲခြင်း
+        if (repeatMode === 0) { this.style.color = "white"; this.title = "No Repeat"; }
+        else if (repeatMode === 1) { this.style.color = "#1db954"; this.title = "Repeat List"; }
+        else { this.innerHTML = '<i class="fas fa-redo-alt"></i>'; this.style.color = "#1db954"; this.title = "Repeat One"; }
+    };
+
+    document.getElementById('btnShuffle').onclick = function() {
+        isShuffle = !isShuffle;
+        this.style.color = isShuffle ? "#1db954" : "white";
+    };
+
+    audioPlayer.onended = () => {
+        if (repeatMode === 2) { 
+            playMusic(); // သီချင်းတစ်ပုဒ်တည်းကိုပဲ ပြန်ဖွင့်မယ်
+        } else if (repeatMode === 1 || currentIndex < playlist.length - 1) {
+            document.getElementById('btnNext').onclick();
+        } else {
+            pauseMusic();
+        }
+    };
+</script>
+
+</body>
+          </html>
+          
